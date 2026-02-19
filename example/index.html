@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Web Push Go - Playground</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0f1116;
+        --panel: #161a22;
+        --text: #e9edf6;
+        --muted: #9aa4b2;
+        --primary: #2f81f7;
+        --danger: #da3633;
+        --ok: #2ea043;
+        --border: #2d333b;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family:
+          Inter,
+          system-ui,
+          -apple-system,
+          Segoe UI,
+          Roboto,
+          sans-serif;
+        background: radial-gradient(
+          circle at top right,
+          #1d2533 0%,
+          var(--bg) 35%
+        );
+        color: var(--text);
+      }
+
+      .container {
+        max-width: 980px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+      }
+
+      .card {
+        background: linear-gradient(180deg, #1a202b 0%, var(--panel) 100%);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+      }
+
+      h1 {
+        margin: 0 0 0.5rem;
+        font-size: 1.5rem;
+      }
+
+      p,
+      li {
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      .grid {
+        display: grid;
+        gap: 0.75rem;
+      }
+
+      .grid.cols {
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      }
+
+      label {
+        display: block;
+        margin-bottom: 0.25rem;
+        color: var(--text);
+        font-weight: 600;
+      }
+
+      input,
+      textarea,
+      button {
+        width: 100%;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0.65rem 0.8rem;
+        font: inherit;
+      }
+
+      input,
+      textarea {
+        background: #0f141d;
+        color: var(--text);
+      }
+
+      textarea {
+        resize: vertical;
+        min-height: 200px;
+      }
+
+      button {
+        background: #222a35;
+        color: var(--text);
+        cursor: pointer;
+        font-weight: 600;
+      }
+
+      button.primary {
+        background: var(--primary);
+        border-color: #1f6fe5;
+      }
+
+      button.danger {
+        background: var(--danger);
+        border-color: #be2e2b;
+      }
+
+      button.ghost {
+        background: transparent;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        width: fit-content;
+        padding: 0.25rem 0.5rem;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #8b949e;
+      }
+
+      .dot.ok {
+        background: var(--ok);
+      }
+
+      .dot.err {
+        background: var(--danger);
+      }
+
+      .row {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+
+      .row > button {
+        flex: 1 1 180px;
+      }
+
+      code {
+        color: #7ee787;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="container">
+      <section class="card">
+        <h1>Web Push Playground (Go)</h1>
+        <p>
+          Use esta página para registrar o Service Worker, gerar a subscription
+          do navegador e copiar o JSON no formato esperado pelo exemplo em Go.
+        </p>
+        <div id="statusBadge" class="badge">
+          <span class="dot" id="statusDot"></span>
+          <span id="statusText">Aguardando inicialização</span>
+        </div>
+      </section>
+
+      <section class="card grid">
+        <div>
+          <label for="vapidPublicKey">VAPID Public Key</label>
+          <input
+            id="vapidPublicKey"
+            type="text"
+            value="BPwILWE-lThezJUNrnD27WHVGJKteEM7saa4PmVeUxOUq5QmbpkMwsEZNRLXmYLEUbFSZyRTNyaILjpvSYS2emY"
+          />
+        </div>
+
+        <div class="row">
+          <button id="registerBtn" class="primary" type="button">
+            Registrar Service Worker
+          </button>
+          <button id="permissionBtn" type="button">Solicitar permissão</button>
+          <button id="subscribeBtn" class="primary" type="button">
+            Assinar Push
+          </button>
+          <button id="unsubscribeBtn" class="danger" type="button">
+            Cancelar assinatura
+          </button>
+        </div>
+      </section>
+
+      <section class="card grid">
+        <div class="row">
+          <button id="refreshBtn" type="button">Atualizar subscription</button>
+          <button id="copyJsonBtn" class="ghost" type="button">
+            Copiar JSON
+          </button>
+        </div>
+
+        <div>
+          <label for="jsonPayload"
+            >JSON para <code>subscriptionString</code> no
+            <code>main.go</code></label
+          >
+          <textarea id="jsonPayload" readonly></textarea>
+        </div>
+      </section>
+
+      <section class="card">
+        <p>
+          Dica: o <code>main.go</code> faz unmarshal direto em
+          <code>webpush.Subscription</code>, então o JSON precisa ter
+          <code>endpoint</code> e <code>keys</code> na raiz.
+        </p>
+      </section>
+    </main>
+
+    <script>
+      "use strict";
+
+      const state = {
+        registration: null,
+        subscription: null,
+      };
+
+      const elements = {
+        statusDot: document.getElementById("statusDot"),
+        statusText: document.getElementById("statusText"),
+        vapidPublicKey: document.getElementById("vapidPublicKey"),
+        jsonPayload: document.getElementById("jsonPayload"),
+      };
+
+      function setStatus(text, type = "info") {
+        elements.statusText.textContent = text;
+        elements.statusDot.classList.remove("ok", "err");
+        if (type === "ok") elements.statusDot.classList.add("ok");
+        if (type === "err") elements.statusDot.classList.add("err");
+      }
+
+      function safeJson(value) {
+        return JSON.stringify(value, null, 2);
+      }
+
+      function arrayBufferToBase64Url(buffer) {
+        const bytes = new Uint8Array(buffer);
+        let binary = "";
+        for (let i = 0; i < bytes.length; i += 1) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        return btoa(binary)
+          .replace(/\+/g, "-")
+          .replace(/\//g, "_")
+          .replace(/=+$/, "");
+      }
+
+      function toMainGoPayload(subscription) {
+        const raw = subscription.toJSON ? subscription.toJSON() : {};
+        const p256dhKey = subscription.getKey
+          ? subscription.getKey("p256dh")
+          : null;
+        const authKey = subscription.getKey
+          ? subscription.getKey("auth")
+          : null;
+
+        return {
+          endpoint: subscription.endpoint || raw.endpoint || "",
+          keys: {
+            p256dh:
+              (p256dhKey && arrayBufferToBase64Url(p256dhKey)) ||
+              (raw.keys && raw.keys.p256dh) ||
+              "",
+            auth:
+              (authKey && arrayBufferToBase64Url(authKey)) ||
+              (raw.keys && raw.keys.auth) ||
+              "",
+          },
+        };
+      }
+
+      function renderSubscription(subscription) {
+        state.subscription = subscription || null;
+        const payload = subscription ? toMainGoPayload(subscription) : null;
+        elements.jsonPayload.value = payload ? safeJson(payload) : "";
+      }
+
+      async function registerServiceWorker() {
+        if (!("serviceWorker" in navigator)) {
+          throw new Error("Este navegador não suporta Service Worker");
+        }
+        state.registration =
+          await navigator.serviceWorker.register("service-worker.js");
+        await navigator.serviceWorker.ready;
+        setStatus("Service Worker registrado", "ok");
+      }
+
+      async function askPermission() {
+        if (!("Notification" in window)) {
+          throw new Error("Este navegador não suporta Notification API");
+        }
+        const permission = await Notification.requestPermission();
+        if (permission !== "granted") {
+          throw new Error("Permissão de notificação não concedida");
+        }
+        setStatus("Permissão concedida", "ok");
+      }
+
+      async function getCurrentSubscription() {
+        if (!state.registration) {
+          await registerServiceWorker();
+        }
+        const subscription =
+          await state.registration.pushManager.getSubscription();
+        renderSubscription(subscription);
+        if (subscription) {
+          setStatus("Subscription carregada", "ok");
+        } else {
+          setStatus("Sem subscription ativa");
+        }
+      }
+
+      async function subscribe() {
+        await askPermission();
+        if (!state.registration) {
+          await registerServiceWorker();
+        }
+
+        const vapidPublicKey = elements.vapidPublicKey.value.trim();
+        if (!vapidPublicKey) {
+          throw new Error("Informe a VAPID public key");
+        }
+
+        const existing = await state.registration.pushManager.getSubscription();
+        if (existing) {
+          renderSubscription(existing);
+          setStatus("Subscription já existia", "ok");
+          return;
+        }
+
+        const subscription = await state.registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+        });
+
+        renderSubscription(subscription);
+        setStatus("Subscription criada com sucesso", "ok");
+      }
+
+      async function unsubscribe() {
+        if (!state.registration) {
+          await registerServiceWorker();
+        }
+
+        const subscription =
+          await state.registration.pushManager.getSubscription();
+        if (!subscription) {
+          renderSubscription(null);
+          setStatus("Não havia subscription para remover");
+          return;
+        }
+
+        await subscription.unsubscribe();
+        renderSubscription(null);
+        setStatus("Subscription removida", "ok");
+      }
+
+      async function copyFromTextArea(textArea, label) {
+        const value = textArea.value;
+        if (!value) {
+          throw new Error(`Nada para copiar em ${label}`);
+        }
+        await navigator.clipboard.writeText(value);
+        setStatus(`${label} copiado para a área de transferência`, "ok");
+      }
+
+      function wireEvents() {
+        document
+          .getElementById("registerBtn")
+          .addEventListener("click", wrap(registerServiceWorker));
+        document
+          .getElementById("permissionBtn")
+          .addEventListener("click", wrap(askPermission));
+        document
+          .getElementById("subscribeBtn")
+          .addEventListener("click", wrap(subscribe));
+        document
+          .getElementById("unsubscribeBtn")
+          .addEventListener("click", wrap(unsubscribe));
+        document
+          .getElementById("refreshBtn")
+          .addEventListener("click", wrap(getCurrentSubscription));
+        document.getElementById("copyJsonBtn").addEventListener(
+          "click",
+          wrap(() => copyFromTextArea(elements.jsonPayload, "JSON")),
+        );
+      }
+
+      function wrap(fn) {
+        return async function () {
+          try {
+            await fn();
+          } catch (err) {
+            setStatus(err.message || "Erro inesperado", "err");
+            console.error(err);
+          }
+        };
+      }
+
+      function urlBase64ToUint8Array(base64String) {
+        const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+        const base64 = (base64String + padding)
+          .replace(/\-/g, "+")
+          .replace(/_/g, "/");
+        const rawData = window.atob(base64);
+        return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
+      }
+
+      (async function init() {
+        wireEvents();
+        try {
+          await registerServiceWorker();
+          await getCurrentSubscription();
+        } catch (err) {
+          setStatus(err.message || "Falha ao iniciar", "err");
+          console.error(err);
+        }
+      })();
+    </script>
+  </body>
+</html>
