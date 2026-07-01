@@ -2,6 +2,7 @@ package webpush
 
 import (
 	"net/http"
+	"time"
 )
 
 type HttpClient interface {
@@ -19,6 +20,8 @@ type Options struct {
 	maxConcurrency int
 	// PackSize defines the maximum number of messages to pack in a single batch.
 	packSize int
+	// VapidExpiration defines the lifetime of the VAPID JWT attached to each request.
+	vapidExpiration time.Duration
 }
 
 // WithHttpClient sets the HTTP client used to send push notifications.
@@ -53,4 +56,16 @@ func WithPackSize(size int) func(*Options) {
 		}
 		o.packSize = size
 	}
-}	
+}
+
+// WithVapidExpiration sets the lifetime of the VAPID JWT attached to each
+// request (default is 3 hours). Values outside (0, 24h] — the maximum allowed
+// by the VAPID spec (RFC 8292) — fall back to the default.
+func WithVapidExpiration(d time.Duration) func(*Options) {
+	return func(o *Options) {
+		if d <= 0 || d > 24*time.Hour {
+			d = 3 * time.Hour
+		}
+		o.vapidExpiration = d
+	}
+}

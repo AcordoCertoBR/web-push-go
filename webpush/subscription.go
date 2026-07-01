@@ -12,10 +12,12 @@ type Subscription struct {
 	Keys     Keys   `json:"keys"`
 }
 
-// HasValidEndpoint checks if the subscription has a valid endpoint URL.
+// HasValidEndpoint checks if the subscription endpoint is an absolute
+// http(s) URL with a host. url.Parse alone accepts almost any string, so the
+// scheme and host are checked explicitly.
 func (s *Subscription) HasValidEndpoint() bool {
-	_, err := url.Parse(s.Endpoint)
-	return err == nil && s.Endpoint != ""
+	u, err := url.Parse(s.Endpoint)
+	return err == nil && (u.Scheme == "https" || u.Scheme == "http") && u.Host != ""
 }
 
 // HasKeys checks if the subscription has valid keys.

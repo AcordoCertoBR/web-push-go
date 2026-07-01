@@ -28,7 +28,9 @@ type MessageOptions struct {
 	Silent             bool             `json:"silent,omitempty"`
 	Tag                string           `json:"tag,omitempty"`
 	Timestamp          int64            `json:"timestamp,omitempty"`
-	Vibrate            bool             `json:"vibrate,omitempty"`
+	// Vibrate is a vibration pattern in milliseconds (alternating
+	// vibration/pause), per the Notification API — not an on/off flag.
+	Vibrate []int `json:"vibrate,omitempty"`
 }
 
 // Check for more details here: https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerRegistration/showNotification
