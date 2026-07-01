@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ESSantana/web-push-go/webpush"
+	"github.com/AcordoCertoBR/web-push-go/webpush"
 )
 
 const (

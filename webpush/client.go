@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ESSantana/web-push-go/webpush/constants"
+	"github.com/AcordoCertoBR/web-push-go/webpush/constants"
 )
 
 // WebPushClient prepares and sends Web Push requests. It is safe for

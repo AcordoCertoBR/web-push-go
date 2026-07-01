@@ -13,7 +13,7 @@ Portuguese documentation: [README.pt-BR.md](README.pt-BR.md).
 ## Installation
 
 ```bash
-go get github.com/ESSantana/web-push-go
+go get github.com/AcordoCertoBR/web-push-go
 ```
 
 ## Quick start
@@ -26,7 +26,7 @@ import (
 	"encoding/json"
 	"log"
 
-	"github.com/ESSantana/web-push-go/webpush"
+	"github.com/AcordoCertoBR/web-push-go/webpush"
 )
 
 func main() {
