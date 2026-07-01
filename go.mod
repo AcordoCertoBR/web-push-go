@@ -1,4 +1,4 @@
-module github.com/ESSantana/web-push-go
+module github.com/AcordoCertoBR/web-push-go
 
 go 1.25.6
 

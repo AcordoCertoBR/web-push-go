@@ -1,9 +1,15 @@
 package webpush
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 )
+
+// ErrInvalidSubscription marks a subscription whose endpoint or keys are
+// missing or malformed. Delivery can never succeed — callers should discard
+// the stored subscription. Detect it with errors.Is.
+var ErrInvalidSubscription = errors.New("invalid subscription")
 
 // ResponseError is returned by SendMessage when the push service responds
 // with a non-success status code. It exposes the status code and response

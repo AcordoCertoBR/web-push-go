@@ -13,7 +13,7 @@ Biblioteca Go para envio de notificações Web Push com VAPID.
 ## Instalação
 
 ```bash
-go get github.com/ESSantana/web-push-go
+go get github.com/AcordoCertoBR/web-push-go
 ```
 
 ## Uso rápido
@@ -26,7 +26,7 @@ import (
 	"encoding/json"
 	"log"
 
-	"github.com/ESSantana/web-push-go/webpush"
+	"github.com/AcordoCertoBR/web-push-go/webpush"
 )
 
 func main() {

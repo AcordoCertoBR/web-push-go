@@ -251,8 +251,21 @@ func TestPrepareMessageRejectsInvalidSubscription(t *testing.T) {
 	fake := &fakeHTTPClient{status: http.StatusCreated}
 	client := newTestClient(t, fake)
 
-	invalid := Subscription{Endpoint: "not-a-url", Keys: Keys{P256DH: "x", Auth: "y"}}
-	if _, err := client.PrepareMessage(context.Background(), invalid, "hello", NotificationOptions{}); err == nil {
-		t.Fatal("expected error for invalid endpoint")
+	tests := []struct {
+		name string
+		sub  Subscription
+	}{
+		{name: "invalid endpoint", sub: Subscription{Endpoint: "not-a-url", Keys: Keys{P256DH: "x", Auth: "y"}}},
+		{name: "missing keys", sub: Subscription{Endpoint: "https://push.example.com/send/abc"}},
+		{name: "malformed p256dh", sub: Subscription{Endpoint: "https://push.example.com/send/abc", Keys: Keys{P256DH: "!!not base64!!", Auth: "AAAA"}}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := client.PrepareMessage(context.Background(), tt.sub, "hello", NotificationOptions{})
+			if !errors.Is(err, ErrInvalidSubscription) {
+				t.Fatalf("expected ErrInvalidSubscription, got %v", err)
+			}
+		})
 	}
 }
