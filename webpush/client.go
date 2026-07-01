@@ -116,7 +116,7 @@ func (w *WebPushClient) PrepareAndPackMessage(ctx context.Context, subscription 
 // validation, encryption, request creation, or VAPID signing fails.
 func (w *WebPushClient) PrepareMessage(ctx context.Context, subscription Subscription, payload string, options NotificationOptions) (*http.Request, error) {
 	if !subscription.HasValidEndpoint() || !subscription.HasKeys() {
-		return nil, errors.New("invalid subscription")
+		return nil, ErrInvalidSubscription
 	}
 
 	encryptBody, err := EncryptPayload(subscription.Keys.P256DH, subscription.Keys.Auth, payload, 0)

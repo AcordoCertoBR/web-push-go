@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/binary"
+	"fmt"
 
 	"errors"
 )
@@ -46,12 +47,12 @@ const (
 func EncryptPayload(p256dh, auth, payload string, customRecordSize uint32) (encryptedBody []byte, err error) {
 	clientPubKeyBytes, err := decodeBase64Key(p256dh)
 	if err != nil {
-		return encryptedBody, err
+		return encryptedBody, fmt.Errorf("%w: p256dh: %v", ErrInvalidSubscription, err)
 	}
 
 	authSecret, err := decodeBase64Key(auth)
 	if err != nil {
-		return encryptedBody, err
+		return encryptedBody, fmt.Errorf("%w: auth: %v", ErrInvalidSubscription, err)
 	}
 
 	curve, serverPrivKey, serverPubKey, err := generateServerKeys()
