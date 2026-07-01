@@ -7,7 +7,6 @@ import (
 	"crypto/hkdf"
 	"crypto/rand"
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/binary"
 
 	"errors"
@@ -45,12 +44,12 @@ const (
 //   - encryptedBody: serialized encrypted payload body ready to send in a Web Push request.
 //   - err: non-nil on key decoding, key derivation, randomness, cipher setup, or size validation failure.
 func EncryptPayload(p256dh, auth, payload string, customRecordSize uint32) (encryptedBody []byte, err error) {
-	clientPubKeyBytes, err := decodeKey(p256dh)
+	clientPubKeyBytes, err := decodeBase64Key(p256dh)
 	if err != nil {
 		return encryptedBody, err
 	}
 
-	authSecret, err := decodeKey(auth)
+	authSecret, err := decodeBase64Key(auth)
 	if err != nil {
 		return encryptedBody, err
 	}
@@ -128,11 +127,6 @@ func EncryptPayload(p256dh, auth, payload string, customRecordSize uint32) (encr
 	body = append(body, ciphertext...)
 
 	return body, nil
-}
-
-func decodeKey(key string) ([]byte, error) {
-	bytes, err := base64.RawURLEncoding.DecodeString(key)
-	return bytes, err
 }
 
 func generateServerKeys() (curve ecdh.Curve, privateKey *ecdh.PrivateKey, publicKey *ecdh.PublicKey, err error) {

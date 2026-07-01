@@ -22,6 +22,7 @@ go get github.com/ESSantana/web-push-go
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 
@@ -64,6 +65,7 @@ func main() {
 
 	client := webpush.NewWebPushClient(vapid)
 	err = client.PrepareAndSendMessage(
+		context.Background(),
 		subscription,
 		string(payload),
 		webpush.NotificationOptions{Urgency: webpush.UrgencyNormal},
@@ -73,6 +75,9 @@ func main() {
 	}
 }
 ```
+
+Chaves VAPID e de subscription são aceitas em base64 raw ou com padding,
+URL-safe ou padrão, e normalizadas internamente para raw URL-safe.
 
 ## Formato de subscription esperado
 
@@ -133,14 +138,18 @@ go run ./example
 - `WithConcurrentSending(true|false)`
 - `WithMaxConcurrency(n)`
 - `WithPackSize(n)`
+- `WithVapidExpiration(d)` — validade do JWT VAPID (padrão 3h, máx. 24h pela RFC 8292)
 
 Também é possível empacotar mensagens com `PrepareAndPackMessage` e enviar em lote com `SendPackedMessages`.
 
 ## Features do WebPushClient
 
+Todos os métodos de preparação recebem um `context.Context` que limita a
+chamada HTTP (deadline/cancelamento).
+
 ### Envio simples
 
-- `PrepareAndSendMessage(subscription, payload, options)`
+- `PrepareAndSendMessage(ctx, subscription, payload, options)`
   - valida subscription
   - criptografa o payload
   - monta request com headers Web Push + VAPID
@@ -148,16 +157,20 @@ Também é possível empacotar mensagens com `PrepareAndPackMessage` e enviar em
 
 ### Preparar sem enviar
 
-- `PrepareMessage(subscription, payload, options)` retorna `*http.Request` pronta.
+- `PrepareMessage(ctx, subscription, payload, options)` retorna `*http.Request` pronta.
 - `SendMessage(req)` envia depois (útil para inspeção/log/retry customizado).
 
 ### Envio em lote (pack)
 
-- `PrepareAndPackMessage(...)` adiciona mensagens em fila interna.
-- `SendPackedMessages()` envia toda a fila:
-  - modo sequencial (padrão): para no primeiro erro
+- `PrepareAndPackMessage(ctx, ...)` adiciona mensagens em fila interna.
+- `SendPackedMessages()` envia toda a fila e a limpa. Todas as mensagens são
+  tentadas mesmo quando alguma falha; as falhas voltam como um único erro
+  combinado (desembrulhe com `errors.As`/`errors.Is`):
+  - modo sequencial (padrão): envia uma a uma, em ordem
   - modo concorrente (`WithConcurrentSending(true)`): envia em paralelo até `WithMaxConcurrency(...)`
 - `CollectPackedMessages()` devolve e limpa a fila sem enviar.
+
+O client é seguro para uso concorrente.
 
 ### Defaults importantes
 
@@ -166,7 +179,7 @@ Também é possível empacotar mensagens com `PrepareAndPackMessage` e enviar em
 - `Topic`: se informado, vai no header `Topic`.
 - HTTP client padrão: timeout de 10s (se não usar `WithHttpClient`).
 
-### Critério de sucesso no envio
+### Critério de sucesso e classificação de erro
 
 `SendMessage` considera sucesso com status HTTP:
 
@@ -174,7 +187,21 @@ Também é possível empacotar mensagens com `PrepareAndPackMessage` e enviar em
 - `201 Created`
 - `202 Accepted`
 
-Fora disso, retorna erro com URL, status code e body da resposta do push service.
+Fora disso, retorna um `*webpush.ResponseError` com endpoint, status code e
+body da resposta, permitindo classificar o resultado sem parsear strings de
+erro:
+
+```go
+var respErr *webpush.ResponseError
+if errors.As(err, &respErr) {
+	switch {
+	case respErr.SubscriptionGone(): // 404/410 — apague a subscription armazenada
+	case respErr.Unauthorized():     // 401/403 — chaves VAPID não batem com a subscription
+	case respErr.PayloadTooLarge():  // 413 — reduza o payload
+	case respErr.Transient():        // 429/5xx — seguro tentar de novo depois
+	}
+}
+```
 
 ## Troubleshooting
 
@@ -221,6 +248,10 @@ Exemplo:
 
 - `401/403`: VAPID inválido, subject incorreto, assinatura/token inválido.
 - `410 Gone`: subscription expirada/revogada (gere uma nova no browser).
+
+Use `errors.As` com `*webpush.ResponseError` e seus helpers
+(`SubscriptionGone`, `Unauthorized`, `Transient`, ...) para tratar esses casos
+programaticamente.
 
 ## Licença
 

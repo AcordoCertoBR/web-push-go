@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -33,7 +34,7 @@ func main() {
 	message := buildExampleMessage()
 	notificationOptions := buildNotificationOptions()
 
-	err = client.PrepareAndSendMessage(subscription, message, notificationOptions)
+	err = client.PrepareAndSendMessage(context.Background(), subscription, message, notificationOptions)
 	if err != nil {
 		log.Fatalf("failed to send web push message: %v", err)
 	}
